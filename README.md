@@ -1,3 +1,3 @@
 # aws-token
 
-deno project
+Deno project for obtaining temporary session token for AWS profile
