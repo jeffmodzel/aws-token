@@ -1,0 +1,53 @@
+#!/usr/bin/env node
+
+const [, , ...args] = process.argv;
+const profile = args[0];
+const token = args[1];
+const profileToken = `${profile}-token`;
+
+// console.log('profile', profile);
+// console.log('token', token);
+// console.log('profileToken', profileToken);
+
+const AWS = require('aws-sdk');
+const moment = require('moment-timezone');
+const credentials = new AWS.SharedIniFileCredentials({profile: profile});
+const sts = new AWS.STS({credentials: credentials});
+const iam = new AWS.IAM({credentials: credentials});
+
+const util = require('util');
+const listMFADevices = util.promisify(iam.listMFADevices.bind(iam));
+const getSessionToken = util.promisify(sts.getSessionToken.bind(sts));
+const exec = util.promisify(require('child_process').exec);
+
+(async function () {
+  const listMfaDevicesResponse = await listMFADevices();
+  const serialNumber = listMfaDevicesResponse.MFADevices[0].SerialNumber;
+  const sessionTokenParams = {
+    DurationSeconds: 129600,
+    SerialNumber: serialNumber,
+    TokenCode: token
+  };
+  const getSessionTokenResponse = await getSessionToken(sessionTokenParams);
+  const creds = getSessionTokenResponse.Credentials;
+  // console.log('creds', creds);
+  const {stdout1, stderr1} = await exec(
+    `aws configure set aws_access_key_id ${creds.AccessKeyId} --profile ${profileToken}`
+  );
+  const {stdout2, stderr2} = await exec(
+    `aws configure set aws_secret_access_key ${creds.SecretAccessKey} --profile ${profileToken}`
+  );
+  const {stdout3, stderr3} = await exec(
+    `aws configure set aws_session_token ${creds.SessionToken} --profile ${profileToken}`
+  );
+
+  if (stderr1 || stderr2 || stderr3) {
+    throw stderr;
+  }
+
+  console.log(
+    `Set session token in profile ${profileToken}, expires ${moment(creds.Expiration)
+      .tz('America/New_York')
+      .format('MM/DD/YYYY hh:mm z')}`
+  );
+})();
