@@ -26,12 +26,13 @@ if (import.meta.main) {
   const profile = Deno.args[0];
   const token = Deno.args[1];
   const profileToken = `${profile}-token`;
+  const defaultRegion = 'us-east-1';
 
   console.log(`Profile: ${profile}`);
   console.log(`Token: ${token}`);
 
-  const credentials = fromIni({ profile: profile });
-  const iam = new IAMClient({ credentials });
+  const credentials = fromIni({ profile: profile });  
+  const iam = new IAMClient({ credentials, region: defaultRegion }); // added region for Windows compile
   const output = await iam.send(new ListMFADevicesCommand({}));
 
   if (!output) {
@@ -53,7 +54,7 @@ if (import.meta.main) {
     serialNumber = output!.MFADevices[0]!.SerialNumber as string;
   }
 
-  const sts = new STSClient({ credentials });
+  const sts = new STSClient({ credentials,region: defaultRegion }); // added region for Windows compile
   const tokenOutput = await sts.send(
     new GetSessionTokenCommand({
       DurationSeconds: 129600,

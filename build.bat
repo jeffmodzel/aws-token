@@ -1,0 +1,3 @@
+ECHO Starting windows/doc build...
+deno compile -A --output aws-token.exe main.ts
+ECHO check output, should be a file aws-token.exe
